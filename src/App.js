@@ -6,6 +6,8 @@ import Dashboard from "./pages/Dashboard";
 import { useState } from "react";
 import Signup from "./pages/Signup";
 import PrivateRoute from "./components/PrivateRoute";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
 
 export const App=()=> {
 
@@ -34,6 +36,10 @@ export const App=()=> {
             </PrivateRoute>
           }
         />
+        <Route path="/about" element={<About/>} />
+
+        <Route path="/contact" element={<Contact/>} />
+
       </Routes>
     </div>
   );
