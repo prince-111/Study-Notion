@@ -167,3 +167,71 @@ exports.getAllCourses = async (req, res) => {
     })
   }
 }
+
+// Get One Single Course Details
+exports.getCourseDetails = async (req, res) => {
+  try {
+    // Destructure courseId from the request body
+    const { courseId } = req.body
+
+    // Find a course by its ID
+    const courseDetails = await Course.findOne({
+      _id: courseId, // Filter condition: course ID
+    })
+      // Populate the "instructor" field and its nested "additionalDetails"
+      .populate({
+        path: "instructor",
+        populate: {
+          path: "additionalDetails",
+        },
+      })
+      // Populate the "category" field
+      .populate("category")
+      // Populate the "ratingAndReviews" field
+      .populate("ratingAndReviews")
+      // Populate the "courseContent" field and its nested "subSection"
+      .populate({
+        path: "courseContent",
+        populate: {
+          path: "subSection",
+        },
+      })
+      // Execute the query
+      .exec()
+
+    // Debugging: Log course details and courseId to the console (commented out)
+    // console.log(
+    //   "###################################### course details : ",
+    //   courseDetails,
+    //   courseId
+    // );
+
+    // Check if course details are not found or if the result is empty
+    if (!courseDetails || !courseDetails.length) {
+      return res.status(400).json({
+        success: false,
+        message: `Could not find course with id: ${courseId}`,
+      })
+    }
+
+    // Check if the course status is "Draft"
+    if (courseDetails.status === "Draft") {
+      return res.status(403).json({
+        success: false,
+        message: `Accessing a draft course is forbidden`,
+      })
+    }
+
+    // Return the fetched course details as a JSON response with a success status
+    return res.status(200).json({
+      success: true,
+      data: courseDetails,
+    })
+  } catch (error) {
+    // Return a 500 status with an error message in case of failure
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
