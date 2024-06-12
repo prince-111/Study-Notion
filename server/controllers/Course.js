@@ -128,3 +128,42 @@ exports.createCourse = async (req, res) => {
     })
   }
 }
+
+
+// Get Course List
+exports.getAllCourses = async (req, res) => {
+  try {
+    // Fetch all courses that have a status of "Published"
+    const allCourses = await Course.find(
+      { status: "Published" }, // Filter condition: only "Published" courses
+      {
+        // Fields to be included in the result
+        courseName: true,
+        price: true,
+        thumbnail: true,
+        instructor: true,
+        ratingAndReviews: true,
+        studentsEnrolled: true,
+      }
+    )
+    // Populate the "instructor" field with related data
+    .populate("instructor")
+    // Execute the query
+    .exec()
+
+    // Return the fetched courses as a JSON response with a success status
+    return res.status(200).json({
+      success: true,
+      data: allCourses,
+    })
+  } catch (error) {
+    // Log any error that occurs during the process
+    console.log(error)
+    // Return a 404 status with an error message in case of failure
+    return res.status(404).json({
+      success: false,
+      message: `Can't Fetch Course Data`,
+      error: error.message,
+    })
+  }
+}
