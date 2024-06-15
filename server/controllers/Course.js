@@ -2,6 +2,8 @@ const User = require("../models/User");
 const Category = require("../models/Category");
 const uploadImageToCloudinary = require("../models/imageUploader");
 const Course = require("../models/Course");
+const { convertSecondsToDuration } = require("../utils/secToDuration");
+
 
 // Function to create a new course
 exports.createCourse = async (req, res) => {
@@ -229,6 +231,80 @@ exports.getCourseDetails = async (req, res) => {
     })
   } catch (error) {
     // Return a 500 status with an error message in case of failure
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    })
+  }
+}
+
+
+// Exporting the getCourseDetails function as an asynchronous function
+exports.getCourseDetails = async (req, res) => {
+  try {
+    // Extracting courseId from the request body
+    const { courseId } = req.body
+    
+    // Finding the course details by courseId and populating related fields
+    const courseDetails = await Course.findOne({
+      _id: courseId,
+    })
+      .populate({
+        path: "instructor", // Populating instructor field
+        populate: {
+          path: "additionalDetails", // Populating nested additionalDetails field within instructor
+        },
+      })
+      .populate("category") // Populating category field
+      .populate("ratingAndReviews") // Populating ratingAndReviews field
+      .populate({
+        path: "courseContent", // Populating courseContent field
+        populate: {
+          path: "subSection", // Populating nested subSection field within courseContent
+          select: "-videoUrl", // Excluding videoUrl field from subSection
+        },
+      })
+      .exec() // Executing the query
+
+    // Checking if courseDetails is not found
+    if (!courseDetails) {
+      return res.status(400).json({
+        success: false,
+        message: `Could not find course with id: ${courseId}`,
+      })
+    }
+
+    // Commented out check for draft status
+    // if (courseDetails.status === "Draft") {
+    //   return res.status(403).json({
+    //     success: false,
+    //     message: `Accessing a draft course is forbidden`,
+    //   });
+    // }
+
+    // Initializing totalDurationInSeconds to accumulate the duration of all subSections
+    let totalDurationInSeconds = 0
+    courseDetails.courseContent.forEach((content) => {
+      content.subSection.forEach((subSection) => {
+        // Converting subSection timeDuration to seconds and adding to totalDurationInSeconds
+        const timeDurationInSeconds = parseInt(subSection.timeDuration)
+        totalDurationInSeconds += timeDurationInSeconds
+      })
+    })
+
+    // Converting the total duration from seconds to a human-readable format
+    const totalDuration = convertSecondsToDuration(totalDurationInSeconds)
+
+    // Sending a successful response with courseDetails and totalDuration
+    return res.status(200).json({
+      success: true,
+      data: {
+        courseDetails,
+        totalDuration,
+      },
+    })
+  } catch (error) {
+    // Handling any errors that occur during the process
     return res.status(500).json({
       success: false,
       message: error.message,
