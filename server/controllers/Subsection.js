@@ -4,6 +4,12 @@ const SubSection = require("../models/Subsection");
 const { uploadImageToCloudinary } = require("../utils/imageUploader");
 
 // Create a new sub-section for a given section
+// fetch data from req body
+// extract file/video
+//upload video to cloudinary
+//create sub-section
+// update the corresponding section with the newly created sub-section
+// return the newly created sub-section
 exports.createSubSection = async (req, res) => {
   try {
     // Extract necessary information from the request body
@@ -19,18 +25,18 @@ exports.createSubSection = async (req, res) => {
     console.log(video);
 
     // Upload the video file to Cloudinary
-    // const uploadDetails = await uploadImageToCloudinary(
-    //   video,
-    //   process.env.FOLDER_NAME
-    // );
-    // console.log(uploadDetails);
+    const uploadDetails = await uploadImageToCloudinary(
+      video,
+      process.env.FOLDER_NAME
+    );
+    console.log(uploadDetails);
     // Create a new sub-section with the necessary information
-    // const SubSectionDetails = await SubSection.create({
-    //   title: title,
-    //   timeDuration: `${uploadDetails.duration}`,
-    //   description: description,
-    //   videoUrl: uploadDetails.secure_url,
-    // });
+    const SubSectionDetails = await SubSection.create({
+      title: title,
+      timeDuration: `${uploadDetails.duration}`,
+      description: description,
+      videoUrl: uploadDetails.secure_url,
+    });
 
     // Update the corresponding section with the newly created sub-section
     const updatedSection = await Section.findByIdAndUpdate(
@@ -71,15 +77,15 @@ exports.updateSubSection = async (req, res) => {
     if (description !== undefined) {
       subSection.description = description;
     }
-    // if (req.files && req.files.video !== undefined) {
-    //   const video = req.files.video;
-    //   const uploadDetails = await uploadImageToCloudinary(
-    //     video,
-    //     process.env.FOLDER_NAME
-    //   );
-    //   subSection.videoUrl = uploadDetails.secure_url;
-    //   subSection.timeDuration = `${uploadDetails.duration}`;
-    // }
+    if (req.files && req.files.video !== undefined) {
+      const video = req.files.video;
+      const uploadDetails = await uploadImageToCloudinary(
+        video,
+        process.env.FOLDER_NAME
+      );
+      subSection.videoUrl = uploadDetails.secure_url;
+      subSection.timeDuration = `${uploadDetails.duration}`;
+    }
 
     await subSection.save();
 
