@@ -3,6 +3,8 @@ const Category = require("../models/Category");
 const uploadImageToCloudinary = require("../models/imageUploader");
 const Course = require("../models/Course");
 const { convertSecondsToDuration } = require("../utils/secToDuration");
+const Section = require("../models/Section");
+const SubSection = require("../models/Subsection");
 
 // Function to create a new course
 exports.createCourse = async (req, res) => {
@@ -309,7 +311,6 @@ exports.getCourseDetails = async (req, res) => {
   }
 };
 
-
 // Edit Course Details
 exports.editCourse = async (req, res) => {
   try {
@@ -383,6 +384,69 @@ exports.editCourse = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Internal server error",
+      error: error.message,
+    });
+  }
+};
+
+// Delete the Course
+exports.deleteCourse = async (req, res) => {
+  try {
+    // Extract courseId from the request body
+    const { courseId } = req.body;
+
+    // Find the course by its ID
+    const course = await Course.findById(courseId);
+    // If the course is not found, return a 404 error response
+    if (!course) {
+      return res.status(404).json({ message: "Course not found" });
+    }
+
+    // Get the list of students enrolled in the course
+    const studentsEnrolled = course.studentsEnroled;
+    // Iterate through each student ID
+    for (const studentId of studentsEnrolled) {
+      // Remove the courseId from the student's courses list
+      await User.findByIdAndUpdate(studentId, {
+        $pull: { courses: courseId },
+      });
+    }
+
+    // Get the list of sections in the course
+    const courseSections = course.courseContent;
+    // Iterate through each section ID
+    for (const sectionId of courseSections) {
+      // Find the section by its ID
+      const section = await Section.findById(sectionId);
+      if (section) {
+        // Get the list of subsections in the section
+        const subSections = section.subSection;
+        // Iterate through each subsection ID
+        for (const subSectionId of subSections) {
+          // Delete the subsection by its ID
+          await SubSection.findByIdAndDelete(subSectionId);
+        }
+      }
+
+      // Delete the section by its ID
+      await Section.findByIdAndDelete(sectionId);
+    }
+
+    // Delete the course by its ID
+    await Course.findByIdAndDelete(courseId);
+
+    // Return a success response
+    return res.status(200).json({
+      success: true,
+      message: "Course deleted successfully",
+    });
+  } catch (error) {
+    // Log any error that occurs
+    console.error(error);
+    // Return a server error response
+    return res.status(500).json({
+      success: false,
+      message: "Server error",
       error: error.message,
     });
   }
