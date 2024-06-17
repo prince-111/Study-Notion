@@ -117,3 +117,30 @@ exports.deleteAccount = async (req, res) => {
       .json({ success: false, message: "User Cannot be deleted successfully" });
   }
 };
+
+exports.getAllUserDetails = async (req, res) => {
+  try {
+    // Extract the user's ID from the request object
+    const id = req.user.id;
+
+    // Find the user by their ID and populate the additionalDetails field
+    const userDetails = await User.findById(id)
+      .populate("additionalDetails") // Populate the additionalDetails field with related document data
+      .exec(); // Execute the query
+
+    console.log(userDetails); // Log the user details for debugging purposes
+
+    // Send a success response with the user data
+    res.status(200).json({
+      success: true,
+      message: "User Data fetched successfully",
+      data: userDetails,
+    });
+  } catch (error) {
+    // If an error occurs, send a 500 status with the error message
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
