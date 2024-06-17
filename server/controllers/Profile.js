@@ -1,5 +1,8 @@
+const { default: mongoose } = require("mongoose");
+const CourseProgress = require("../models/CourseProgress");
 const Profile = require("../models/Profile"); // Import the Profile model
 const User = require("../models/User"); // Import the User model
+const Course = require("../models/Course");
 
 // Function to update the profile
 exports.updateProfile = async (req, res) => {
@@ -60,5 +63,57 @@ exports.updateProfile = async (req, res) => {
       success: false,
       error: error.message,
     });
+  }
+};
+
+exports.deleteAccount = async (req, res) => {
+  try {
+    // Extract the user's ID from the request object
+    const id = req.user.id;
+    console.log(id); // Log the user ID for debugging purposes
+
+    // Find the user by their ID in the User collection
+    const user = await User.findById({ _id: id });
+
+    // If the user is not found, return a 404 status with an error message
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
+    }
+
+    // Delete the associated profile using the additionalDetails field in the user document
+    await Profile.findByIdAndDelete({
+      _id: new mongoose.Types.ObjectId(user.additionalDetails),
+    });
+
+    // Iterate over the user's courses and remove the user from the studentsEnroled array for each course
+    for (const courseId of user.courses) {
+      await Course.findByIdAndUpdate(
+        courseId,
+        { $pull: { studentsEnroled: id } }, // Remove the user ID from the studentsEnroled array
+        { new: true } // Return the updated document
+      );
+    }
+
+    // Delete the user from the User collection
+    await User.findByIdAndDelete({ _id: id });
+
+    // Send a success response indicating the user was deleted successfully
+    res.status(200).json({
+      success: true,
+      message: "User deleted successfully",
+    });
+
+    // Delete all course progress documents associated with the user
+    await CourseProgress.deleteMany({ userId: id });
+  } catch (error) {
+    console.log(error); // Log any errors that occur
+
+    // Send a 500 status with an error message if deletion was unsuccessful
+    res
+      .status(500)
+      .json({ success: false, message: "User Cannot be deleted successfully" });
   }
 };
