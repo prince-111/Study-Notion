@@ -175,3 +175,98 @@ exports.updateDisplayPicture = async (req, res) => {
     });
   }
 };
+
+exports.getEnrolledCourses = async (req, res) => {
+  try {
+    // Extract user ID from the request object
+    const userId = req.user.id;
+
+    // Find the user details including the enrolled courses and nested population of course contents and subsections
+    let userDetails = await User.findOne({
+      _id: userId,
+    })
+      .populate({
+        path: "courses",
+        populate: {
+          path: "courseContent",
+          populate: {
+            path: "subSection",
+          },
+        },
+      })
+      .exec();
+
+    // Convert mongoose document to plain JavaScript object
+    userDetails = userDetails.toObject();
+
+    // Initialize variable to store the total number of subsections
+    var SubsectionLength = 0;
+
+    // Loop through each course the user is enrolled in
+    for (var i = 0; i < userDetails.courses.length; i++) {
+      let totalDurationInSeconds = 0; // Initialize total duration for the course
+      SubsectionLength = 0; // Reset subsection length counter for each course
+
+      // Loop through each content section of the current course
+      for (var j = 0; j < userDetails.courses[i].courseContent.length; j++) {
+        // Calculate the total duration by summing up the time duration of each subsection
+        totalDurationInSeconds += userDetails.courses[i].courseContent[
+          j
+        ].subSection.reduce(
+          (acc, curr) => acc + parseInt(curr.timeDuration),
+          0
+        );
+
+        // Convert total duration in seconds to a human-readable format and store it in the course object
+        userDetails.courses[i].totalDuration = convertSecondsToDuration(
+          totalDurationInSeconds
+        );
+
+        // Increment subsection length counter
+        SubsectionLength +=
+          userDetails.courses[i].courseContent[j].subSection.length;
+      }
+
+      // Find the progress count for the current course
+      let courseProgressCount = await CourseProgress.findOne({
+        courseID: userDetails.courses[i]._id,
+        userId: userId,
+      });
+
+      // Get the number of completed videos for the current course
+      courseProgressCount = courseProgressCount?.completedVideos.length;
+
+      // Calculate progress percentage and handle cases with zero subsections
+      if (SubsectionLength === 0) {
+        userDetails.courses[i].progressPercentage = 100; // If no subsections, progress is 100%
+      } else {
+        // Calculate progress percentage with two decimal precision
+        const multiplier = Math.pow(10, 2);
+        userDetails.courses[i].progressPercentage =
+          Math.round(
+            (courseProgressCount / SubsectionLength) * 100 * multiplier
+          ) / multiplier;
+      }
+    }
+
+    // Check if user details were not found
+    if (!userDetails) {
+      return res.status(400).json({
+        success: false,
+        message: `Could not find user with id: ${userDetails}`,
+      });
+    }
+
+    // Send the user's courses data in the response
+    return res.status(200).json({
+      success: true,
+      data: userDetails.courses,
+    });
+  } catch (error) {
+    // Handle any errors that occur during execution
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
