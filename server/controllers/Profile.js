@@ -270,3 +270,40 @@ exports.getEnrolledCourses = async (req, res) => {
     });
   }
 };
+
+// Exporting the instructorDashboard function as an asynchronous function
+exports.instructorDashboard = async (req, res) => {
+  try {
+    // Fetching the course details for the instructor with the given user ID from the request object
+    const courseDetails = await Course.find({ instructor: req.user.id });
+
+    // Mapping through the courseDetails to create a new array with additional statistics
+    const courseData = courseDetails.map((course) => {
+      // Calculating the total number of students enrolled in the course
+      const totalStudentsEnrolled = course.studentsEnroled.length;
+      // Calculating the total amount generated from the course by multiplying the number of students by the course price
+      const totalAmountGenerated = totalStudentsEnrolled * course.price;
+
+      // Creating a new object that includes additional fields for each course
+      const courseDataWithStats = {
+        _id: course._id, // Course ID
+        courseName: course.courseName, // Course name
+        courseDescription: course.courseDescription, // Course description
+        // Add any other course properties as needed here
+        totalStudentsEnrolled, // Total number of students enrolled
+        totalAmountGenerated, // Total amount generated from the course
+      };
+
+      // Returning the new object for the current course
+      return courseDataWithStats;
+    });
+
+    // Sending a JSON response with a status of 200 and the array of course data
+    res.status(200).json({ courses: courseData });
+  } catch (error) {
+    // Logging the error to the console in case of an exception
+    console.error(error);
+    // Sending a JSON response with a status of 500 and an error message
+    res.status(500).json({ message: "Server Error" });
+  }
+};
